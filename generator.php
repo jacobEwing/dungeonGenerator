@@ -51,7 +51,6 @@ function buildDungeon($params){
 	$optionalParams = array(
 		'stairup' => false,
 		'stairdown' => false,
-		'connectionsneeded' => rand() % 3 + 1,
 		'roomscale' => .6 + (rand() % 400) / 1000,
 		'gridscale' => .75 + (rand() % 500) / 1000
 	);
