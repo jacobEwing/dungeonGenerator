@@ -1,0 +1,11 @@
+This is a simple library for generating terrains.  The goal is for there to be
+multiple types of terrain, but as of this writing there are two:
+
+ - Dungeons
+ - forest
+
+Those are generated using some standalone code, found in either generator.js or
+generator.php.  Note that each of those files is independent of the other, and
+performs the same task.  They each contain functions for generating terrain,
+and are simply translations of each other.  Either one of them can be used in
+your code as a standalone file, and the functions therein should work.
