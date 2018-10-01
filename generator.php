@@ -307,12 +307,28 @@ function buildSwamp($params){
 		'height'
 	);
 
+	// no need for these to add up to 100 - chance is calculated from their sum
+	$optionalParams = array(
+		'treeChance' => 10,
+		'waterChance' => 15,
+		'reedChance' => 85
+	);
+
 	foreach($requiredParams as $param){
 		if(!array_key_exists($param, $params)){
 			throw new Exception("buildSwamp required parameter \"" . $param . "\" not provided.");
 		}
 		$$param = $params[$param];
 	}
+
+	foreach($optionalParams as $param => $defaultval){
+		if(array_key_exists($param, $params)){
+			$$param = $params[$param];
+		}else{
+			$$param = $defaultval;
+		}
+	}
+	$totalChance = $treeChance + $waterChance + $reedChance;
 
 	if(!is_integer($width) || $width < 3){
 		throw new Exception("buildSwamp: Invaid width parameter:" . $width);
@@ -338,8 +354,16 @@ function buildSwamp($params){
 	
 	for($x = 0; $x < $xGrid; $x ++){
 		for($y = 0; $y < $yGrid; $y++){
-			if(!(rand() % ($gridStep))){
-				$drawchar = rand() % 5 < 2 ? 'T' : '~';
+			if(rand() % ($gridStep)){
+				$chance = rand() % $totalChance;
+				if($chance < $treeChance){
+					$drawchar = 'T';
+				}else if($chance < $treeChance + $waterChance){
+					$drawchar = '=';
+				}else{
+					$drawchar = '"';
+				}
+				$drawchar = $chance < 5 ? 'T' : ($chance < 15 ? '=' : '"');
 				for($dx = 0; $dx < $gridStep; $dx++){
 					for($dy = 0; $dy < $gridStep; $dy++){
 						$map[$x * $gridStep + $dx][$y * $gridStep + $dy] = $drawchar;

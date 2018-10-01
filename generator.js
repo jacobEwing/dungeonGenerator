@@ -329,6 +329,13 @@ function buildSwamp(){
 		'width',
 		'height'
 	);
+
+	// no need for these to add up to 100 - chance is calculated from their sum
+	var optionalParams = {
+		'treeChance' : 10,
+		'waterChance' : 15,
+		'reedChance' : 85
+	};
 	
 	var p, param;
 
@@ -344,6 +351,18 @@ function buildSwamp(){
 
 		eval(param + ' = ' + arguments[0][param]); 
 	}
+
+	for(param in optionalParams){
+		defaultval = optionalParams[param];
+	
+		if(arguments[0][param] != undefined){
+			eval(param + ' = ' + arguments[0][param]); 
+		}else{
+			eval(param + ' = ' + defaultval); 
+		}
+	}
+
+	var totalChance = treeChance + waterChance + reedChance;
 
 	width *= 1;
 	if(width < 3){
@@ -364,12 +383,19 @@ function buildSwamp(){
 	
 	var xGrid = Math.floor(width / gridStep);
 	var yGrid = Math.floor(height / gridStep);
-	var x, y, dx, dy, drawchar;
+	var x, y, dx, dy, drawchar, chance;
 
 	for(x = 0; x < xGrid; x++){
 		for(y = 0; y < yGrid; y++){
 			if(!Math.floor(Math.random() * gridStep / 2)){
-				drawchar = Math.random() < .4 ? 'T' : '~';
+				chance = Math.floor(Math.random() * totalChance);
+				if(chance < treeChance){
+					drawchar = 'T';
+				}else if(chance < treeChance + waterChance){
+					drawchar = '=';
+				}else{
+					drawchar = '"';
+				}
 				for(dx = 0; dx < gridStep; dx++){
 					for(dy = 0; dy < gridStep; dy++){
 						map[x * gridStep + dx][y * gridStep + dy] = drawchar;
