@@ -293,7 +293,29 @@ function buildForest($params){
 			}
 		}
 	}
+	$map = life($map, 5, '.', 'T');
+	return $map;
+}
 
+function life($map, $iterations, $livechar, $deadchar){
+	$newMap = makeEmptyMap(count($map), count($map[0]));
+	for($n = 0; $n < $iterations; $n++){
+		for($x = 0; $x < count($map); $x++){
+			for($y = 0; $y < count($map); $y++){
+				$tally = 0;
+				for($dx = -1; $dx <= 1; $dx++){
+					for($dy = -1; $dy <= 1; $dy++){
+						if($dx == 0 && $dy == 0) continue;
+						$rx = ($x + $dx + count($map)) % count($map);
+						$ry = ($y + $dy + count($map[$rx])) % count($map[$rx]);
+						$tally += $map[$rx][$ry] == $livechar ? 1 : 0;
+					}
+				}
+				$newMap[$x][$y] = ($tally > 1 && $tally < 4) ? $livechar : $deadchar;
+			}
+		}
+		$map = $newMap;
+	}
 	return $map;
 }
 

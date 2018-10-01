@@ -317,6 +317,36 @@ function buildForest(){
 		}
 	}
 
+	// let's run the game of life on it to give it a more chaotic look
+	map = life(map, 5, '.', 'T');
+	return map;
+}
+
+function life(map, iterations, livechar, deadchar){
+	var newMap = makeEmptyMap(map.length, map[0].length);
+	var x, y, dx, dy, tally, rx, ry, n;
+	for(n = 0; n < iterations; n++){
+		for(x = 0; x < map.length; x++){
+			for(y = 0; y < map[x].length; y++){
+				tally = 0;
+				for(dx = -1; dx <= 1; dx++){
+					for(dy = -1; dy <= 1; dy++){
+						if(dx == 0 && dy == 0) continue;
+						rx = (x + dx + map.length) % map.length;
+						ry = (y + dy + map[rx].length) % map[rx].length;
+						tally += map[rx][ry] == livechar ? 1 : 0;
+					}
+				}
+				newMap[x][y] = (tally > 1 && tally < 4) ? livechar : deadchar;
+			}
+		}
+		//map = newMap;
+		for(x = 0; x < map.length; x++){
+			for(y = 0; y < map[x].length; y++){
+				map[x][y] = newMap[x][y];
+			}
+		}
+	}
 	return map;
 }
 
