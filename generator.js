@@ -286,12 +286,12 @@ function buildForest(){
 
 	width *= 1;
 	if(width < 3){
-		throw "buildDungeon: Invaid width parameter:" + width;
+		throw "buildForest: Invaid width parameter:" + width;
 	}
 
 	height *= 1;
 	if(height < 3){
-		throw "buildDungeon: Invaid height parameter" + height;
+		throw "buildForest: Invaid height parameter" + height;
 	}
 
 	var area = width * height;
@@ -318,29 +318,111 @@ function buildForest(){
 	}
 
 	// let's run the game of life on it to give it a more chaotic look
-	map = life(map, 5, '.', 'T');
+	map = life(map, 5, 'T');
 	return map;
 }
 
-function life(map, iterations, livechar, deadchar){
+// Render a swamp terrain
+function buildSwamp(){
+	
+	var requiredParams = Array(
+		'width',
+		'height'
+	);
+	
+	var p, param;
+
+	if(arguments.length != 1){
+		throw "buildSwamp: expecting one argument of type class";
+	}
+
+	for(p in requiredParams){
+		param = requiredParams[p];
+		if(arguments[0][param] == undefined){
+			throw "buildSwamp required parameter \"" + param + "\" not provided.";
+		}
+
+		eval(param + ' = ' + arguments[0][param]); 
+	}
+
+	width *= 1;
+	if(width < 3){
+		throw "buildSwamp: Invaid width parameter:" + width;
+	}
+
+	height *= 1;
+	if(height < 3){
+		throw "buildSwamp: Invaid height parameter" + height;
+	}
+
+	var area = width * height;
+	var map = makeEmptyMap(width, height, '.');
+
+
+	// ok, we have our empty map, now let's do the dirty business!
+	var gridStep = Math.round(Math.pow(area, .125));
+	
+	var xGrid = Math.floor(width / gridStep);
+	var yGrid = Math.floor(height / gridStep);
+	var x, y, dx, dy, drawchar;
+
+	for(x = 0; x < xGrid; x++){
+		for(y = 0; y < yGrid; y++){
+			if(!Math.floor(Math.random() * gridStep / 2)){
+				drawchar = Math.random() < .4 ? 'T' : '~';
+				for(dx = 0; dx < gridStep; dx++){
+					for(dy = 0; dy < gridStep; dy++){
+						map[x * gridStep + dx][y * gridStep + dy] = drawchar;
+					}
+				}
+			}
+		}
+	}
+
+	// let's run the game of life on it to give it a more chaotic look
+	map = life(map, 4, '.');
+	return map;
+}
+
+// a competetive version of the game of life, which allows competing life forms
+function life(map, iterations, deadchar){
 	var newMap = makeEmptyMap(map.length, map[0].length);
-	var x, y, dx, dy, tally, rx, ry, n;
+	var x, y, dx, dy, tally, rx, ry, n, charval;
 	for(n = 0; n < iterations; n++){
 		for(x = 0; x < map.length; x++){
 			for(y = 0; y < map[x].length; y++){
-				tally = 0;
+				tally = Array();
 				for(dx = -1; dx <= 1; dx++){
 					for(dy = -1; dy <= 1; dy++){
 						if(dx == 0 && dy == 0) continue;
 						rx = (x + dx + map.length) % map.length;
 						ry = (y + dy + map[rx].length) % map[rx].length;
-						tally += map[rx][ry] == livechar ? 1 : 0;
+
+						charval = map[rx][ry];
+						if(tally[charval] == undefined){
+							tally[charval] = 1;
+						}else{
+							tally[charval]++;
+						}
+
 					}
 				}
-				newMap[x][y] = (tally > 1 && tally < 4) ? livechar : deadchar;
+				bestTally = -1;
+				for(m in tally){
+					if(tally[m] > 1 && tally[m] < 4){
+						if(bestTally == -1 || tally[bestTally] < tally[m]){
+							bestTally = m;
+						}
+					}
+				}
+				if(bestTally != -1){
+					newMap[x][y] = bestTally;
+				}else{
+					newMap[x][y] = deadchar;
+				}
 			}
 		}
-		//map = newMap;
+
 		for(x = 0; x < map.length; x++){
 			for(y = 0; y < map[x].length; y++){
 				map[x][y] = newMap[x][y];
@@ -349,7 +431,6 @@ function life(map, iterations, livechar, deadchar){
 	}
 	return map;
 }
-
 
 // initialize a clean map of the specified dimensions.
 function makeEmptyMap(width, height, fillchar){

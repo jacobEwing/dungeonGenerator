@@ -238,7 +238,7 @@ function buildDungeon($params){
 
 }
 
-// Render a forst terrain
+// Render a forest terrain
 function buildForest($params){
 	if(!is_array($params)){
 		throw new Exception("buildTrees expects one argument of type array");
@@ -293,25 +293,99 @@ function buildForest($params){
 			}
 		}
 	}
-	$map = life($map, 5, '.', 'T');
+	$map = life($map, 5, 'T');
 	return $map;
 }
 
-function life($map, $iterations, $livechar, $deadchar){
+// Render a swamp terrain
+function buildSwamp($params){
+	if(!is_array($params)){
+		throw new Exception("buildSwamp expects one argument of type array");
+	}
+	$requiredParams = array(
+		'width',
+		'height'
+	);
+
+	foreach($requiredParams as $param){
+		if(!array_key_exists($param, $params)){
+			throw new Exception("buildSwamp required parameter \"" . $param . "\" not provided.");
+		}
+		$$param = $params[$param];
+	}
+
+	if(!is_integer($width) || $width < 3){
+		throw new Exception("buildSwamp: Invaid width parameter:" . $width);
+	}
+
+	if(!is_integer($height) || $height < 3){
+		throw new Exception("buildSwamp: Invaid height parameter" . $height);
+	}
+
+	$area = $width * $height;
+
+	$map = array();
+	for($n = 0; $n < $width; $n++){
+		$map[$n] = array_fill(0, $height, '.');
+	}
+
+
+	// ok, we have our empty map, now let's do the dirty business!
+	$gridStep = round(pow($area, .125));
+	
+	$xGrid = floor($width / $gridStep);
+	$yGrid = floor($height / $gridStep);
+	
+	for($x = 0; $x < $xGrid; $x ++){
+		for($y = 0; $y < $yGrid; $y++){
+			if(!(rand() % ($gridStep))){
+				$drawchar = rand() % 5 < 2 ? 'T' : '~';
+				for($dx = 0; $dx < $gridStep; $dx++){
+					for($dy = 0; $dy < $gridStep; $dy++){
+						$map[$x * $gridStep + $dx][$y * $gridStep + $dy] = $drawchar;
+					}
+				}
+			}
+		}
+	}
+	$map = life($map, 4, '.');
+	return $map;
+}
+
+// a competetive version of the game of life, which allows competing life forms
+function life($map, $iterations, $deadchar){
 	$newMap = makeEmptyMap(count($map), count($map[0]));
 	for($n = 0; $n < $iterations; $n++){
 		for($x = 0; $x < count($map); $x++){
 			for($y = 0; $y < count($map); $y++){
-				$tally = 0;
+				$tally = array();
 				for($dx = -1; $dx <= 1; $dx++){
 					for($dy = -1; $dy <= 1; $dy++){
 						if($dx == 0 && $dy == 0) continue;
 						$rx = ($x + $dx + count($map)) % count($map);
 						$ry = ($y + $dy + count($map[$rx])) % count($map[$rx]);
-						$tally += $map[$rx][$ry] == $livechar ? 1 : 0;
+
+						$charval = $map[$rx][$ry];
+						if(!array_key_exists($charval, $tally)){
+							$tally[$charval] = 1;
+						}else{
+							$tally[$charval]++;
+						}
 					}
 				}
-				$newMap[$x][$y] = ($tally > 1 && $tally < 4) ? $livechar : $deadchar;
+				$bestTally = -1;
+				foreach($tally as $m => $sum){
+					if($sum > 1 && $sum < 4){
+						if($bestTally == -1 || $tally[$bestTally] < $sum){
+							$bestTally = $m;
+						}
+					}
+				}
+				if($bestTally != -1){
+					$newMap[$x][$y] = $bestTally;
+				}else{
+					$newMap[$x][$y] = $deadchar;
+				}
 			}
 		}
 		$map = $newMap;
