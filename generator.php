@@ -8,15 +8,13 @@ class roomClass{
 	public function setArea($x, $y, $gridStep, $zoom){
 		$gridStep = abs($gridStep);
 		$zoom = abs($zoom);
-		$x += .5;
-		$y += .5;
 
-		$this->x = $x * $gridStep;
-		$this->y = $y * $gridStep;
-		$this->x1 = $x * $gridStep - $gridStep * $zoom;
-		$this->x2 = $x * $gridStep + $gridStep * $zoom - 1;
-		$this->y1 = $y * $gridStep - $gridStep * $zoom;
-		$this->y2 = $y * $gridStep + $gridStep * $zoom - 1;
+		$this->x = round($x * $gridStep);
+		$this->y = round($y * $gridStep);
+		$this->x1 = round($x * $gridStep - $gridStep * $zoom);
+		$this->x2 = round($x * $gridStep + $gridStep * $zoom);
+		$this->y1 = round($y * $gridStep - $gridStep * $zoom);
+		$this->y2 = round($y * $gridStep + $gridStep * $zoom);
 
 		$minSize = 3;
 		$dx = $this->x2 - $this->x1;
@@ -86,7 +84,7 @@ function buildDungeon($params){
 
 	// first we build a few basic rooms
 	$gridStep = round($gridscale * pow($area, 1/4));
-	
+
 	$xGrid = floor($width / $gridStep);
 	$yGrid = floor($height / $gridStep);
 
@@ -98,8 +96,8 @@ function buildDungeon($params){
 
 				$dx = ($width >> 1) - $x * $gridStep;
 				$dy = ($height >> 1) - $y * $gridStep;
-				if($dx * $dx + $dy * $dy > $hypsq * $gridStep * (0.1 + (rand() % 1000) / 1000) continue;
-				
+				if($dx * $dx + $dy * $dy > $hypsq * $gridStep * (0.1 + (rand() % 1000) / 1000)) continue;
+
 				// edit this zoom and the if condition to change the varying size of the rooms
 				$zoom =  $roomscale * (rand() % 700 + 300) / 1000;
 				if(rand() % $gridStep < $gridStep * $zoom){
@@ -112,7 +110,7 @@ function buildDungeon($params){
 							if($dx >= 0 && $dx < $width && $dy >= 0 && $dy < $height){
 								$map[$dx][$dy] = ".";
 							}
-							
+
 						}
 					}
 				}
@@ -121,7 +119,7 @@ function buildDungeon($params){
 	}
 	$numRooms = count($rooms);
 
-	// now connect them with hallways	
+	// now connect them with hallways
 	$connectedRooms = array(rand() % $numRooms);
 	for($n = 0; $n < $numRooms; $n++){
 		if(in_array($n, $connectedRooms)) continue;
@@ -208,35 +206,89 @@ function buildDungeon($params){
 		}
 	}
 	// were stairs up/down requested?
+	$upRoom = -1; // <-- affects the logic in stairdown below
 	if($stairup){
-		$tally = rand() % ($width * $height) + 100;
-		while($tally > 0){
-			for($x = 0; $x < $width && $tally > 0; $x += $tally != 0){
-				for($y = 0; $y < $height && $tally > 0; $y += $tally != 0){
-					if($map[$x][$y] == '.'){
-						$tally --;
+		// first see if we can find a middle-of-room that fits
+		$offset = rand() % count($rooms);
+		for($uR = 0; $uR < count($rooms); $uR++){
+			$upRoom = ($uR + $offset) % count($rooms);
+			$goodSpot = 1;
+			// check to see if it's got a one-block clearance from other objects 
+			for($x = $rooms[$upRoom]->x - 1; $y <= $rooms[$upRoom]->x + 1 && $goodSpot; $x++){
+				for($y = $rooms[$upRoom]->y - 1; $y <= $rooms[$upRoom]->y + 1 && $goodSpot; $y++){
+					if($map[$x][$y] != '.'){
+						$goodSpot = 0;
 					}
 				}
 			}
+			if($goodSpot){
+				// found one!
+				break;
+			}
 		}
-		$map[$x][$y] = '<';
+
+		if($goodSpot){
+			$map[$rooms[$upRoom]->x][$rooms[$upRoom]->y] = '<';
+		}else{
+			// fuck it then, go for any existing floor cell
+			changeRandomCellFrom('.', '<', $map);
+		}
 	}
 	if($stairdown){
-		$tally = rand() % ($width * $height) + 100;
-		while($tally > 0){
-			for($x = 0; $x < $width && $tally > 0; $x += $tally != 0){
-				for($y = 0; $y < $height && $tally > 0; $y += $tally != 0){
-					if($map[$x][$y] == '.'){
-						$tally --;
+		// first see if we can find a middle-of-room that fits and isn't taken for the stair up
+		$offset = rand() % count($rooms);
+		for($dR = 0; $dR < count($rooms); $dR++){
+			$downRoom = ($dR + $offset) % count($rooms);
+			if($downRoom == $upRoom) continue;
+			$goodSpot = 1;
+			// check to see if it's got a one-block clearance from other objects 
+			for($x = $rooms[$downRoom]->x - 1; $y <= $rooms[$downRoom]->x + 1 && $goodSpot; $x++){
+				for($y = $rooms[$downRoom]->y - 1; $y <= $rooms[$downRoom]->y + 1 && $goodSpot; $y++){
+					if($map[$x][$y] != '.'){
+						$goodSpot = 0;
 					}
 				}
 			}
+			if($goodSpot){
+				// found one!
+				break;
+			}
 		}
-		$map[$x][$y] = '>';
+
+		if($goodSpot){
+			$map[$rooms[$downRoom]->x][$rooms[$downRoom]->y] = '>';
+		}else{
+			// fuck it then, go for any existing floor cell
+			changeRandomCellFrom('.', '>', $map);
+		}
+
 	}
 	return $map;
 
 }
+
+// changes a random character on the map of the value from, to the value to.
+// Returns true if successful, false otherwise
+function changeRandomCellFrom($from, $to, &$map){
+	$width = count($map);
+	$height = count($map[0]);
+	$rval = false;
+
+	$x = rand() % $width;
+	$y = rand() % $height;
+	for($tally = 0; $tally < $width * $height; $tally++){
+		if($map[$x][$y] == $from) break;
+		$x = ($x + 1) % $width;
+		if(!$x) $y = ($y + 1) % $height;
+	}
+
+	if($map[$x][$y] == $from){
+		$map[$x][$y] = $to;
+		$rval = true;
+	}
+	return $rval;
+}
+
 
 // Render a forest terrain
 function buildForest($params){
@@ -277,10 +329,10 @@ function buildForest($params){
 
 	// ok, we have our empty map, now let's do the dirty business!
 	$gridStep = round(pow($area, .125));
-	
+
 	$xGrid = floor($width / $gridStep);
 	$yGrid = floor($height / $gridStep);
-	
+
 	for($x = 0; $x < $xGrid; $x ++){
 		for($y = 0; $y < $yGrid; $y++){
 			if(!(rand() % ($gridStep))){
@@ -348,10 +400,10 @@ function buildSwamp($params){
 
 	// ok, we have our empty map, now let's do the dirty business!
 	$gridStep = round(pow($area, .125));
-	
+
 	$xGrid = floor($width / $gridStep);
 	$yGrid = floor($height / $gridStep);
-	
+
 	for($x = 0; $x < $xGrid; $x ++){
 		for($y = 0; $y < $yGrid; $y++){
 			if(rand() % ($gridStep)){

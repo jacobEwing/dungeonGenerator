@@ -11,15 +11,13 @@ var roomClass = function(){
 roomClass.prototype.setArea = function(x, y, gridStep, zoom){
 	gridStep = Math.abs(gridStep);
 	zoom = Math.abs(zoom);
-	x += .5;
-	y += .5;
 
 	this.x = Math.round(x * gridStep);
 	this.y = Math.round(y * gridStep);
 	this.x1 = Math.round(x * gridStep - gridStep * zoom);
-	this.x2 = Math.round(x * gridStep + gridStep * zoom - 1);
+	this.x2 = Math.round(x * gridStep + gridStep * zoom);
 	this.y1 = Math.round(y * gridStep - gridStep * zoom);
-	this.y2 = Math.round(y * gridStep + gridStep * zoom - 1);
+	this.y2 = Math.round(y * gridStep + gridStep * zoom);
 
 	var minSize = 3;
 	var dx = this.x2 - this.x1;
@@ -42,7 +40,7 @@ roomClass.prototype.setArea = function(x, y, gridStep, zoom){
 }
 
 function buildDungeon(){
-	
+
 	var requiredParams = Array(
 		'width',
 		'height'
@@ -54,7 +52,7 @@ function buildDungeon(){
 		'roomscale' : .6 + Math.random() * .4,
 		'gridscale' : .75 + Math.random() * .5
 	};
-	
+
 	var p, param, defaultval;
 
 	if(arguments.length != 1){
@@ -72,7 +70,7 @@ function buildDungeon(){
 
 	for(param in optionalParams){
 		defaultval = optionalParams[param];
-	
+
 		if(arguments[0][param] != undefined){
 			eval(param + ' = ' + arguments[0][param]); 
 		}else{
@@ -93,13 +91,13 @@ function buildDungeon(){
 	var area = width * height;
 
 	var map = makeEmptyMap(width, height);
-	
+
 	// ok, we have our empty map, now let's do the dirty business!
 	var zoom, room, dx, dy, numRooms, n, m, x, y;
 
 	// first we build a few basic rooms
 	var gridStep = Math.round(gridscale * Math.pow(area, 1/4));
-	
+
 	var xGrid = Math.floor(width / gridStep);
 	var yGrid = Math.floor(height / gridStep);
 
@@ -113,7 +111,7 @@ function buildDungeon(){
 				dx = (width >> 1) - x * gridStep;
 				dy = (height >> 1) - y * gridStep;
 				if(dx * dx + dy * dy > hypsq * gridStep * ( 0.1 + Math.random())) continue;
-				
+
 				// edit this zoom and the if condition to change the varying size of the rooms
 				zoom =  roomscale * (Math.random() * 700 + 300) / 1000;
 				if(Math.random() * gridStep < gridStep * zoom){
@@ -126,7 +124,7 @@ function buildDungeon(){
 							if(dx >= 0 && dx < width && dy >= 0 && dy < height){
 								map[dx][dy] = ".";
 							}
-							
+
 						}
 					}
 				}
@@ -134,7 +132,7 @@ function buildDungeon(){
 		}
 	}
 	numRooms = rooms.length;
-	// now connect them with hallways	
+	// now connect them with hallways
 	var connectedRooms = Array();
 	connectedRooms[0] = Math.floor(Math.random() * numRooms);
 	for(n = 0; n < numRooms; n++){
@@ -162,7 +160,7 @@ function buildDungeon(){
 
 		ix = dx == 0 ? 0 : (dx < 0 ? -1 : 1);
 		iy = dy == 0 ? 0 : (dy < 0 ? -1 : 1);
-		
+
 		if(Math.abs(dx) > Math.abs(dy)){
 			for(x = rooms[n].x; x != rooms[nearestIndex].x; x += ix){
 				map[x][rooms[n].y] = '.';
@@ -230,45 +228,103 @@ function buildDungeon(){
 			}
 		}
 	}
+
+	upRoom = -1; // <-- affects logic in stairdown below.
+
 	// were stairs up/down requested?
 	if(stairup){
-		tally = Math.floor(Math.random() * width * height) + 100;
-		while(tally > 0){
-			for(x = 0; x < width && tally > 0; x += tally != 0){
-				for(y = 0; y < height && tally > 0; y += tally != 0){
-					if(map[x][y] == '.'){
-						tally --;
+		// first see if we can find a middle-of-room that fits
+		offset = Math.floor(Math.random() * rooms.length);
+		for(uR = 0; uR < rooms.length; uR++){
+			upRoom = (uR + offset) % rooms.length;
+			goodSpot = 1;
+			// check to see if it's got a one-block clearance from other objects 
+			for(x = rooms[upRoom].x - 1; y <= rooms[upRoom].x + 1 && goodSpot; x++){
+				for(y = rooms[upRoom].y - 1; y <= rooms[upRoom].y + 1 && goodSpot; y++){
+					if(map[x][y] != '.'){
+						goodSpot = 0;
 					}
 				}
 			}
+			if(goodSpot){
+				// found one!
+				break;
+			}
 		}
-		map[x][y] = '<';
+
+		if(goodSpot){
+			map[rooms[upRoom].x][rooms[upRoom].y] = '<';
+		}else{
+			// fuck it then, go for any existing floor cell
+			changeRandomCellFrom('.', '<', map);
+		}
 	}
+
+
+
 	if(stairdown){
-		tally = Math.floor(Math.random() * width * height) + 100;
-		while(tally > 0){
-			for(x = 0; x < width && tally > 0; x += tally != 0){
-				for(y = 0; y < height && tally > 0; y += tally != 0){
-					if(map[x][y] == '.'){
-						tally --;
+		// first see if we can find a middle-of-room that fits and isn't taken for the stair up
+		offset = Math.floor(Math.random() * rooms.length);
+		for(dR = 0; dR < rooms.length; dR++){
+			downRoom = (dR + offset) % rooms.length;
+			if(downRoom == upRoom) continue;
+			goodSpot = 1;
+			// check to see if it's got a one-block clearance from other objects 
+			for(x = rooms[downRoom].x - 1; y <= rooms[downRoom].x + 1 && goodSpot; x++){
+				for(y = rooms[downRoom].y - 1; y <= rooms[downRoom].y + 1 && goodSpot; y++){
+					if(map[x][y] != '.'){
+						goodSpot = 0;
 					}
 				}
 			}
+			if(goodSpot){
+				// found one!
+				break;
+			}
 		}
-		map[x][y] = '>';
+
+		if(goodSpot){
+			map[rooms[downRoom].x][rooms[downRoom].y] = '>';
+		}else{
+			// fuck it then, go for any existing floor cell
+			changeRandomCellFrom('.', '>', map);
+		}
+
 	}
 	return map;
 
 }
 
+// changes a random character on the map of the value from, to the value to.
+// Returns true if successful, false otherwise
+function changeRandomCellFrom(from, to, map){
+	var width = map.length;
+	var height = map[0].length;
+	var rval = false;
+
+	var x = Math.round(Math.random() * width);
+	var y = Math.round(Math.random() * height);
+	for(var tally = 0; tally < width * height; tally++){
+		if(map[x][y] == from) break;
+		x = (x + 1) % width;
+		if(!x) y = (y + 1) % height;
+	}
+
+	if(map[x][y] == from){
+		map[x][y] = to;
+		rval = true;
+	}
+	return rval;
+}
+
 // Render a forst terrain
 function buildForest(){
-	
+
 	var requiredParams = Array(
 		'width',
 		'height'
 	);
-	
+
 	var p, param;
 
 	if(arguments.length != 1){
@@ -300,7 +356,7 @@ function buildForest(){
 
 	// ok, we have our empty map, now let's do the dirty business!
 	var gridStep = Math.round(Math.pow(area, .125));
-	
+
 	var xGrid = Math.floor(width / gridStep);
 	var yGrid = Math.floor(height / gridStep);
 	var x, y, dx, dy;
@@ -324,7 +380,7 @@ function buildForest(){
 
 // Render a swamp terrain
 function buildSwamp(){
-	
+
 	var requiredParams = Array(
 		'width',
 		'height'
@@ -336,7 +392,7 @@ function buildSwamp(){
 		'waterChance' : 15,
 		'reedChance' : 85
 	};
-	
+
 	var p, param;
 
 	if(arguments.length != 1){
@@ -354,7 +410,7 @@ function buildSwamp(){
 
 	for(param in optionalParams){
 		defaultval = optionalParams[param];
-	
+
 		if(arguments[0][param] != undefined){
 			eval(param + ' = ' + arguments[0][param]); 
 		}else{
@@ -380,7 +436,7 @@ function buildSwamp(){
 
 	// ok, we have our empty map, now let's do the dirty business!
 	var gridStep = Math.round(Math.pow(area, .125));
-	
+
 	var xGrid = Math.floor(width / gridStep);
 	var yGrid = Math.floor(height / gridStep);
 	var x, y, dx, dy, drawchar, chance;
