@@ -3,6 +3,7 @@
  * vary depending on circumstance.  For instance "dungeon" would be different
  * from "cave", "city", "castle", etc.  We'll start with dungeon. */
 var roomClass = function(){
+	this.map = null;
 	this.x = this.y = 0;
 	this.x1 = this.y1 = 0;
 	this.x2 = this.y2 = 0;
@@ -39,67 +40,61 @@ roomClass.prototype.setArea = function(x, y, gridStep, zoom){
 	}
 }
 
-function buildDungeon(){
+var mapBuilder = function(){
+	this.width = this.height = 0;
 
-	var requiredParams = Array(
-		'width',
-		'height'
-	);
-
-	var optionalParams = {
+	this.defaultParams = {
+		'width' : 60,
+		'height' : 25,
 		'stairup' : false,
 		'stairdown' : false,
 		'roomscale' : .6 + Math.random() * .4,
-		'gridscale' : .75 + Math.random() * .5
-	};
-
-	var p, param, defaultval;
-
-	if(arguments.length != 1){
-		throw "buildDungeon: expecting one argument of type class";
+		'gridscale' : .75 + Math.random() * .5,
+		'treeChance' : 10,
+		'waterChance' : 15,
+		'reedChance' : 85
 	}
+};
 
-	for(p in requiredParams){
-		param = requiredParams[p];
-		if(arguments[0][param] == undefined){
-			throw "buildDungeon required parameter \"" + param + "\" not provided.";
-		}
-
-		eval(param + ' = ' + arguments[0][param]); 
-	}
-
-	for(param in optionalParams){
-		defaultval = optionalParams[param];
+mapBuilder.prototype.readParams = function(){
+	for(param in this.defaultParams){
+		defaultval = this.defaultParams[param];
 
 		if(arguments[0][param] != undefined){
-			eval(param + ' = ' + arguments[0][param]); 
+			eval('this.' + param + ' = ' + arguments[0][param]); 
 		}else{
-			eval(param + ' = ' + defaultval); 
+			eval('this.' + param + ' = ' + defaultval); 
 		}
 	}
 
-	width *= 1;
-	if(width < 3){
-		throw "buildDungeon: Invaid width parameter:" + width;
+	this.width *= 1;
+	if(this.width < 3){
+		throw "mapBuilder: Invaid width parameter:" + this.width;
 	}
 
-	height *= 1;
-	if(height < 3){
-		throw "buildDungeon: Invaid height parameter" + height;
+	this.height *= 1;
+	if(this.height < 3){
+		throw "mapBuilder: Invaid height parameter" + this.height;
 	}
+}
 
-	var area = width * height;
+mapBuilder.prototype.buildDungeon = function(){
 
-	var map = makeEmptyMap(width, height);
+	this.readParams.apply(this, arguments);
+
+
+	var area = this.width * this.height;
+
+	this.map = this.makeEmptyMap();
 
 	// ok, we have our empty map, now let's do the dirty business!
 	var zoom, room, dx, dy, numRooms, n, m, x, y;
 
 	// first we build a few basic rooms
-	var gridStep = Math.round(gridscale * Math.pow(area, 1/4));
+	var gridStep = Math.round(this.gridscale * Math.pow(area, 1/4));
 
-	var xGrid = Math.floor(width / gridStep);
-	var yGrid = Math.floor(height / gridStep);
+	var xGrid = Math.floor(this.width / gridStep);
+	var yGrid = Math.floor(this.height / gridStep);
 
 	var rooms = Array();
 	var hypsq = xGrid * xGrid + yGrid * yGrid;
@@ -108,12 +103,12 @@ function buildDungeon(){
 		for(x = 0; x < xGrid; x++){
 			for(y = 0; y < yGrid; y++){
 
-				dx = (width >> 1) - x * gridStep;
-				dy = (height >> 1) - y * gridStep;
+				dx = (this.width >> 1) - x * gridStep;
+				dy = (this.height >> 1) - y * gridStep;
 				if(dx * dx + dy * dy > hypsq * gridStep * ( 0.1 + Math.random())) continue;
 
 				// edit this zoom and the if condition to change the varying size of the rooms
-				zoom =  roomscale * (Math.random() * 700 + 300) / 1000;
+				zoom = this.roomscale * (Math.random() * 700 + 300) / 1000;
 				if(Math.random() * gridStep < gridStep * zoom){
 					room = new roomClass();
 					room.setArea(x, y, gridStep, zoom);
@@ -121,8 +116,8 @@ function buildDungeon(){
 
 					for(dx = room.x1; dx <= room.x2; dx++){
 						for(dy = room.y1; dy <= room.y2; dy++){
-							if(dx >= 0 && dx < width && dy >= 0 && dy < height){
-								map[dx][dy] = ".";
+							if(dx >= 0 && dx < this.width && dy >= 0 && dy < this.height){
+								this.map[dx][dy] = ".";
 							}
 
 						}
@@ -131,6 +126,7 @@ function buildDungeon(){
 			}
 		}
 	}
+
 	numRooms = rooms.length;
 	// now connect them with hallways
 	var connectedRooms = Array();
@@ -163,67 +159,38 @@ function buildDungeon(){
 
 		if(Math.abs(dx) > Math.abs(dy)){
 			for(x = rooms[n].x; x != rooms[nearestIndex].x; x += ix){
-				map[x][rooms[n].y] = '.';
+				this.map[x][rooms[n].y] = '.';
 			}
 			for(y = rooms[n].y; y != rooms[nearestIndex].y; y += iy){
-				map[x][y] = '.';
+				this.map[x][y] = '.';
 			}
 		}else{
 			for(y = rooms[n].y; y != rooms[nearestIndex].y; y += iy){
-				map[rooms[n].x][y] = '.';
+				this.map[rooms[n].x][y] = '.';
 			}
 			for(x = rooms[n].x; x != rooms[nearestIndex].x; x += ix){
-				map[x][y] = '.';
+				this.map[x][y] = '.';
 			}
-		}
-	}
-	// now we surround the rooms with brick
-	for(x = 1; x < width - 1; x++){
-		for(y = 1; y < height - 1; y++){
-			if(map[x][y] == "."){
-				for(dx = -1; dx <= 1; dx++){
-					for(dy = -1; dy <= 1; dy++){
-						if(map[x + dx][y + dy] == ' '){
-							map[x + dx][y + dy] = '#';
-						}
-					}
-				}
-			}
-		}
-	}
-	// make sure the edge of the room is enclosed
-	for(x = 0; x < width; x++){
-		if(map[x][0] == '.'){
-			map[x][0] = '#';
-		}
-		if(map[x][height - 1] == '.'){
-			map[x][height - 1] = '#';
-		}
-	}
-	for(y = 0; y < height; y++){
-		if(map[0][y] == '.'){
-			map[0][y] = '#';
-		}
-		if(map[width - 1][y] == '.'){
-			map[width - 1][y] = '#';
 		}
 	}
 
+	this.encloseWithBricks();
+
 	// scrub any trailing walls caused by the code above
-	for(x = 0; x < width; x++){
-		for(y = 0; y < height; y++){
-			if(map[x][y] == '#'){
+	for(x = 0; x < this.width; x++){
+		for(y = 0; y < this.height; y++){
+			if(this.map[x][y] == '#'){
 				tally = 0;
 				for(dx = -1; dx <= 1; dx++){
 					for(dy = -1; dy <= 1; dy++){
 						if(dx == 0 && dy == 0) continue;
-						if(x + dx >= 0 && x + dx < width && y + dy >= 0 && y + dy < height){
-							if(map[x + dx][y + dy] != ' ') tally++;
+						if(x + dx >= 0 && x + dx < this.width && y + dy >= 0 && y + dy < this.height){
+							if(this.map[x + dx][y + dy] != ' ') tally++;
 						}
 					}
 				}
 				if(tally <= 3){
-					map[x][y] = ' ';
+					this.map[x][y] = ' ';
 				}
 			}
 		}
@@ -232,7 +199,7 @@ function buildDungeon(){
 	upRoom = -1; // <-- affects logic in stairdown below.
 
 	// were stairs up/down requested?
-	if(stairup){
+	if(this.stairup){
 		// first see if we can find a middle-of-room that fits
 		offset = Math.floor(Math.random() * rooms.length);
 		for(uR = 0; uR < rooms.length; uR++){
@@ -241,7 +208,7 @@ function buildDungeon(){
 			// check to see if it's got a one-block clearance from other objects 
 			for(x = rooms[upRoom].x - 1; y <= rooms[upRoom].x + 1 && goodSpot; x++){
 				for(y = rooms[upRoom].y - 1; y <= rooms[upRoom].y + 1 && goodSpot; y++){
-					if(map[x][y] != '.'){
+					if(this.map[x][y] != '.'){
 						goodSpot = 0;
 					}
 				}
@@ -253,16 +220,16 @@ function buildDungeon(){
 		}
 
 		if(goodSpot){
-			map[rooms[upRoom].x][rooms[upRoom].y] = '<';
+			this.map[rooms[upRoom].x][rooms[upRoom].y] = '<';
 		}else{
 			// fuck it then, go for any existing floor cell
-			changeRandomCellFrom('.', '<', map);
+			this.changeRandomCellFrom('.', '<', this.map);
 		}
 	}
 
 
 
-	if(stairdown){
+	if(this.stairdown){
 		// first see if we can find a middle-of-room that fits and isn't taken for the stair up
 		offset = Math.floor(Math.random() * rooms.length);
 		for(dR = 0; dR < rooms.length; dR++){
@@ -272,7 +239,7 @@ function buildDungeon(){
 			// check to see if it's got a one-block clearance from other objects 
 			for(x = rooms[downRoom].x - 1; y <= rooms[downRoom].x + 1 && goodSpot; x++){
 				for(y = rooms[downRoom].y - 1; y <= rooms[downRoom].y + 1 && goodSpot; y++){
-					if(map[x][y] != '.'){
+					if(this.map[x][y] != '.'){
 						goodSpot = 0;
 					}
 				}
@@ -284,81 +251,88 @@ function buildDungeon(){
 		}
 
 		if(goodSpot){
-			map[rooms[downRoom].x][rooms[downRoom].y] = '>';
+			this.map[rooms[downRoom].x][rooms[downRoom].y] = '>';
 		}else{
 			// fuck it then, go for any existing floor cell
-			changeRandomCellFrom('.', '>', map);
+			this.changeRandomCellFrom('.', '>', this.map);
 		}
 
 	}
-	return map;
+	return this.map;
 
+}
+
+mapBuilder.prototype.encloseWithBricks = function(){
+	// now we surround the rooms with brick
+	for(x = 1; x < this.width - 1; x++){
+		for(y = 1; y < this.height - 1; y++){
+			if(this.map[x][y] == "."){
+				for(dx = -1; dx <= 1; dx++){
+					for(dy = -1; dy <= 1; dy++){
+						if(this.map[x + dx][y + dy] == ' '){
+							this.map[x + dx][y + dy] = '#';
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// make sure the edge of the room is enclosed
+	for(x = 0; x < this.width; x++){
+		if(this.map[x][0] == '.'){
+			this.map[x][0] = '#';
+		}
+		if(this.map[x][this.height - 1] == '.'){
+			this.map[x][this.height - 1] = '#';
+		}
+	}
+	for(y = 0; y < this.height; y++){
+		if(this.map[0][y] == '.'){
+			this.map[0][y] = '#';
+		}
+		if(this.map[this.width - 1][y] == '.'){
+			this.map[this.width - 1][y] = '#';
+		}
+	}
 }
 
 // changes a random character on the map of the value from, to the value to.
 // Returns true if successful, false otherwise
-function changeRandomCellFrom(from, to, map){
-	var width = map.length;
-	var height = map[0].length;
+mapBuilder.prototype.changeRandomCellFrom = function(from, to, map){
+	var width = this.map.length;
+	var height = this.map[0].length;
 	var rval = false;
 
 	var x = Math.round(Math.random() * width);
 	var y = Math.round(Math.random() * height);
 	for(var tally = 0; tally < width * height; tally++){
-		if(map[x][y] == from) break;
+		if(this.map[x][y] == from) break;
 		x = (x + 1) % width;
 		if(!x) y = (y + 1) % height;
 	}
 
-	if(map[x][y] == from){
-		map[x][y] = to;
+	if(this.map[x][y] == from){
+		this.map[x][y] = to;
 		rval = true;
 	}
 	return rval;
-}
+};
 
 // Render a forst terrain
-function buildForest(){
+mapBuilder.prototype.buildForest = function(){
 
-	var requiredParams = Array(
-		'width',
-		'height'
-	);
+	this.readParams.apply(this, arguments);
 
-	var p, param;
-
-	if(arguments.length != 1){
-		throw "buildForest: expecting one argument of type class";
-	}
-
-	for(p in requiredParams){
-		param = requiredParams[p];
-		if(arguments[0][param] == undefined){
-			throw "buildForest required parameter \"" + param + "\" not provided.";
-		}
-
-		eval(param + ' = ' + arguments[0][param]); 
-	}
-
-	width *= 1;
-	if(width < 3){
-		throw "buildForest: Invaid width parameter:" + width;
-	}
-
-	height *= 1;
-	if(height < 3){
-		throw "buildForest: Invaid height parameter" + height;
-	}
-
-	var area = width * height;
-	var map = makeEmptyMap(width, height, '.');
+	var area = this.width * this.height;
+	this.map = this.makeEmptyMap();
 
 
 	// ok, we have our empty map, now let's do the dirty business!
 	var gridStep = Math.round(Math.pow(area, .125));
 
-	var xGrid = Math.floor(width / gridStep);
-	var yGrid = Math.floor(height / gridStep);
+	var xGrid = Math.floor(this.width / gridStep);
+	var yGrid = Math.floor(this.height / gridStep);
 	var x, y, dx, dy;
 
 	for(x = 0; x < xGrid; x++){
@@ -366,7 +340,7 @@ function buildForest(){
 			if(!Math.floor(Math.random() * gridStep)){
 				for(dx = 0; dx < gridStep; dx++){
 					for(dy = 0; dy < gridStep; dy++){
-						map[x * gridStep + dx][y * gridStep + dy] = "T";
+						this.map[x * gridStep + dx][y * gridStep + dy] = "T";
 					}
 				}
 			}
@@ -374,87 +348,42 @@ function buildForest(){
 	}
 
 	// let's run the game of life on it to give it a more chaotic look
-	map = life(map, 5, 'T');
-	return map;
+	this.life(5, 'T');
+	return this.map;
 }
 
 // Render a swamp terrain
-function buildSwamp(){
+mapBuilder.prototype.buildSwamp = function(){
 
-	var requiredParams = Array(
-		'width',
-		'height'
-	);
+	this.readParams.apply(this, arguments);
 
-	// no need for these to add up to 100 - chance is calculated from their sum
-	var optionalParams = {
-		'treeChance' : 10,
-		'waterChance' : 15,
-		'reedChance' : 85
-	};
-
-	var p, param;
-
-	if(arguments.length != 1){
-		throw "buildSwamp: expecting one argument of type class";
-	}
-
-	for(p in requiredParams){
-		param = requiredParams[p];
-		if(arguments[0][param] == undefined){
-			throw "buildSwamp required parameter \"" + param + "\" not provided.";
-		}
-
-		eval(param + ' = ' + arguments[0][param]); 
-	}
-
-	for(param in optionalParams){
-		defaultval = optionalParams[param];
-
-		if(arguments[0][param] != undefined){
-			eval(param + ' = ' + arguments[0][param]); 
-		}else{
-			eval(param + ' = ' + defaultval); 
-		}
-	}
-
-	var totalChance = treeChance + waterChance + reedChance;
-
-	width *= 1;
-	if(width < 3){
-		throw "buildSwamp: Invaid width parameter:" + width;
-	}
-
-	height *= 1;
-	if(height < 3){
-		throw "buildSwamp: Invaid height parameter" + height;
-	}
-
-	var area = width * height;
-	var map = makeEmptyMap(width, height, '.');
+	var area = this.width * this.height;
+	this.map = this.makeEmptyMap();
 
 
 	// ok, we have our empty map, now let's do the dirty business!
 	var gridStep = Math.round(Math.pow(area, .125));
 
-	var xGrid = Math.floor(width / gridStep);
-	var yGrid = Math.floor(height / gridStep);
+	var xGrid = Math.floor(this.width / gridStep);
+	var yGrid = Math.floor(this.height / gridStep);
 	var x, y, dx, dy, drawchar, chance;
+	
+	var totalChance = this.treeChance + this.waterChance + this.reedChance;
 
 	for(x = 0; x < xGrid; x++){
 		for(y = 0; y < yGrid; y++){
 			if(!Math.floor(Math.random() * gridStep / 2)){
 				chance = Math.floor(Math.random() * totalChance);
-				if(chance < treeChance){
+				if(chance < this.treeChance){
 					drawchar = 'T';
-				}else if(chance < treeChance + waterChance){
+				}else if(chance < this.treeChance + this.waterChance){
 					drawchar = '=';
 				}else{
 					drawchar = '"';
 				}
 				for(dx = 0; dx < gridStep; dx++){
 					for(dy = 0; dy < gridStep; dy++){
-						map[x * gridStep + dx][y * gridStep + dy] = drawchar;
+						this.map[x * gridStep + dx][y * gridStep + dy] = drawchar;
 					}
 				}
 			}
@@ -462,25 +391,25 @@ function buildSwamp(){
 	}
 
 	// let's run the game of life on it to give it a more chaotic look
-	map = life(map, 4, '.');
-	return map;
+	this.life(4, '.');
+	return this.map;
 }
 
 // a competetive version of the game of life, which allows competing life forms
-function life(map, iterations, deadchar){
-	var newMap = makeEmptyMap(map.length, map[0].length);
+mapBuilder.prototype.life = function(iterations, deadchar){
+	var newMap = this.makeEmptyMap(this.map.length, this.map[0].length);
 	var x, y, dx, dy, tally, rx, ry, n, charval;
 	for(n = 0; n < iterations; n++){
-		for(x = 0; x < map.length; x++){
-			for(y = 0; y < map[x].length; y++){
+		for(x = 0; x < this.map.length; x++){
+			for(y = 0; y < this.map[x].length; y++){
 				tally = Array();
 				for(dx = -1; dx <= 1; dx++){
 					for(dy = -1; dy <= 1; dy++){
 						if(dx == 0 && dy == 0) continue;
-						rx = (x + dx + map.length) % map.length;
-						ry = (y + dy + map[rx].length) % map[rx].length;
+						rx = (x + dx + this.map.length) % this.map.length;
+						ry = (y + dy + this.map[rx].length) % this.map[rx].length;
 
-						charval = map[rx][ry];
+						charval = this.map[rx][ry];
 						if(tally[charval] == undefined){
 							tally[charval] = 1;
 						}else{
@@ -505,21 +434,23 @@ function life(map, iterations, deadchar){
 			}
 		}
 
-		for(x = 0; x < map.length; x++){
-			for(y = 0; y < map[x].length; y++){
-				map[x][y] = newMap[x][y];
+		for(x = 0; x < this.map.length; x++){
+			for(y = 0; y < this.map[x].length; y++){
+				this.map[x][y] = newMap[x][y];
 			}
 		}
 	}
-	return map;
+	return this.map;
 }
 
 // initialize a clean map of the specified dimensions.
-function makeEmptyMap(width, height, fillchar){
+mapBuilder.prototype.makeEmptyMap = function (width, height, fillchar){
+	if(width == undefined) width = this.width;
+	if(height == undefined) height = this.height;
 	if(fillchar == undefined) fillchar = ' ';
-	var map = Array();
+	var newmap = Array();
 	for(var n = 0; n < width; n++){
-		map[n] = Array.apply(null, Array(height)).map(String.prototype.valueOf, fillchar);
+		newmap[n] = Array.apply(null, Array(height)).map(String.prototype.valueOf, fillchar);
 	}
-	return map;
-}
+	return newmap;
+};

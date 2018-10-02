@@ -59,9 +59,7 @@
 		}
 
 		#mapContent{
-			font-family: 'Press Start 2P', cursive;
-			line-height; 10px;
-			font-size: 8px;
+			/*font-family: 'Press Start 2P', cursive;*/
 		}
 	</style>
 	<script type="text/javascript" src="jquery.min.js"></script>
@@ -72,43 +70,51 @@
 		}
 
 		function jsBuild(mapType){
+			var error = 0;
 			var size = Math.floor(Math.random() * 60);
+			map = new mapBuilder();
 			switch(mapType){
 				case 'dungeon':
-					map = buildDungeon({
+
+					map.buildDungeon({
 						'width' : 30 + size, 
 						'height' : 30 + size,
 						'stairdown' : true,
 						'stairup' : true/*,
 						'roomscale' : .6,
 						'gridscale' : 1*/
-					})
+					});
+
 					break;
 				case 'swamp':
-					map = buildSwamp({
+					map.buildSwamp({
 						'width' : 30 + size, 
 						'height' : 30 + size
 					});
 					break;
 				case 'forest':
-					map = buildForest({
+					map.buildForest({
 						'width' : 30 + size, 
 						'height' : 30 + size
 					});
 					break;
 				default:
 					alert('Invalid map type');
+					error = 1;
 					map = [];
 			}
 
-			var lineStr;
-			$('#mapContent').html('');
-			for(var y = 0; y < map[0].length; y++){
-				lineStr = "";
-				for(var x = 0; x < map.length; x++){
-					lineStr += map[x][y];
+			if(!error){
+				map = map.map;
+				var lineStr;
+				$('#mapContent').html('');
+				for(var y = 0; y < map[0].length; y++){
+					lineStr = "";
+					for(var x = 0; x < map.length; x++){
+						lineStr += map[x][y];
+					}
+					$('#mapContent').append(lineStr + "\n");
 				}
-				$('#mapContent').append(lineStr + "\n");
 			}
 		}
 	</script>
@@ -120,8 +126,7 @@
 	<button onclick="jsBuild('dungeon');">JS Dungeon</button>
 	<button onclick="jsBuild('forest');">JS Forest</button>
 	<button onclick="jsBuild('swamp');">JS Swamp</button>
-	<pre id="mapContent">
-</pre>
+	<pre id="mapContent" style="line-height: 0.56em"></pre>
 </body>
 </html>
 
