@@ -112,7 +112,7 @@ function buildDungeon(){
 
 				dx = (width >> 1) - x * gridStep;
 				dy = (height >> 1) - y * gridStep;
-				if(dx * dx + dy * dy > hypsq * gridStep * .8) continue;
+				if(dx * dx + dy * dy > hypsq * gridStep * ( 0.1 + Math.random())) continue;
 				
 				// edit this zoom and the if condition to change the varying size of the rooms
 				zoom =  roomscale * (Math.random() * 700 + 300) / 1000;

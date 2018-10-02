@@ -79,8 +79,9 @@
 						'width' : 30 + size, 
 						'height' : 30 + size,
 						'stairdown' : true,
-						'stairup' : true
-						//'roomscale' : 1
+						'stairup' : true/*,
+						'roomscale' : .6,
+						'gridscale' : 1*/
 					})
 					break;
 				case 'swamp':

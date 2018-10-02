@@ -98,7 +98,7 @@ function buildDungeon($params){
 
 				$dx = ($width >> 1) - $x * $gridStep;
 				$dy = ($height >> 1) - $y * $gridStep;
-				if($dx * $dx + $dy * $dy > $hypsq * $gridStep * .8) continue;
+				if($dx * $dx + $dy * $dy > $hypsq * $gridStep * (0.1 + (rand() % 1000) / 1000) continue;
 				
 				// edit this zoom and the if condition to change the varying size of the rooms
 				$zoom =  $roomscale * (rand() % 700 + 300) / 1000;
