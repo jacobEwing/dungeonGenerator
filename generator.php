@@ -90,7 +90,7 @@ function buildDungeon($params){
 	$xGrid = floor($width / $gridStep);
 	$yGrid = floor($height / $gridStep);
 
-	$rooms = [];
+	$rooms = array();
 	$hypsq = $xGrid * $xGrid + $yGrid * $yGrid;
 	for($attemptTally = 0; count($rooms) < 3 && ($attemptTally < 1000 || count($rooms) == 0); $attemptTally++){
 		for($x = 0; $x < $xGrid; $x ++){
