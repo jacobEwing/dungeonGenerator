@@ -77,11 +77,11 @@
 				case 'dungeon':
 
 					map.buildDungeon({
-						'width' : 30 + size, 
-						'height' : 30 + size,
+						'width' : 5 + size, 
+						'height' : 5 + size,
 						'stairdown' : true,
-						'stairup' : true/*,
-						'roomscale' : .6,
+						'stairup' : true,
+						'roomscale' : .6 /*
 						'gridscale' : 1*/
 					});
 
