@@ -48,7 +48,7 @@ var mapBuilder = function(){
 		'height' : 25,
 		'stairup' : false,
 		'stairdown' : false,
-		'roomscale' : .6 + Math.random() * .4,
+		'roomscale' : .9 + Math.random() * .2,
 		'gridscale' : 1 + Math.random() * .5,
 		'treeChance' : 10,
 		'waterChance' : 15,
@@ -104,11 +104,6 @@ mapBuilder.prototype.buildDungeon = function(){
 	for(var attemptTally = 0; this.rooms.length < 3 && (attemptTally < 1000 || count(this.rooms) == 0); attemptTally++){
 		for(x = 0; x < xGrid; x++){
 			for(y = 0; y < yGrid; y++){
-/*
-				dx = (this.width >> 1) - x * gridStep;
-				dy = (this.height >> 1) - y * gridStep;
-				if(dx * dx + dy * dy > hypsq * gridStep * ( 0.1 + Math.random())) continue;
-*/
 				// edit this zoom and the if condition to change the varying size of the rooms
 				zoom = this.roomscale * (Math.random() * 700 + 300) / 1000;
 				if(Math.random() * gridStep < gridStep * zoom){
@@ -133,90 +128,43 @@ mapBuilder.prototype.buildDungeon = function(){
 
 	this.encloseWithBricks();
 
-	// scrub any trailing walls caused by the code above
-	for(x = 0; x < this.width; x++){
-		for(y = 0; y < this.height; y++){
-			if(this.map[x][y] == '#'){
-				tally = 0;
-				for(dx = -1; dx <= 1; dx++){
-					for(dy = -1; dy <= 1; dy++){
-						if(dx == 0 && dy == 0) continue;
-						if(x + dx >= 0 && x + dx < this.width && y + dy >= 0 && y + dy < this.height){
-							if(this.map[x + dx][y + dy] != ' ') tally++;
-						}
-					}
-				}
-				if(tally <= 3){
-					this.map[x][y] = ' ';
-				}
-			}
-		}
-	}
-
-	upRoom = -1; // <-- affects logic in stairdown below.
-
 	// were stairs up/down requested?
-	if(this.stairup){
-		// first see if we can find a middle-of-room that fits
-		offset = Math.floor(Math.random() * this.rooms.length);
-		for(uR = 0; uR < this.rooms.length; uR++){
-			upRoom = (uR + offset) % this.rooms.length;
-			goodSpot = 1;
-			// check to see if it's got a one-block clearance from other objects 
-			for(x = this.rooms[upRoom].x - 1; x <= this.rooms[upRoom].x + 1 && goodSpot; x++){
-				for(y = this.rooms[upRoom].y - 1; y <= this.rooms[upRoom].y + 1 && goodSpot; y++){
-					if(this.map[x][y] != '.'){
-						goodSpot = 0;
-					}
-				}
-			}
-			if(goodSpot){
-				// found one!
-				break;
-			}
-		}
+	if(this.stairup) this.placeinRandomRoom('<');
+	if(this.stairdown) this.placeinRandomRoom('>');
 
-		if(goodSpot){
-			this.map[this.rooms[upRoom].x][this.rooms[upRoom].y] = '<';
-		}else{
-			// fuck it then, go for any existing floor cell
-			this.changeRandomCellFrom('.', '<', this.map);
-		}
-	}
-
-
-
-	if(this.stairdown){
-		// first see if we can find a middle-of-room that fits and isn't taken for the stair up
-		offset = Math.floor(Math.random() * this.rooms.length);
-		for(dR = 0; dR < this.rooms.length; dR++){
-			downRoom = (dR + offset) % this.rooms.length;
-			if(downRoom == upRoom) continue;
-			goodSpot = 1;
-			// check to see if it's got a one-block clearance from other objects 
-			for(x = this.rooms[downRoom].x - 1; x <= this.rooms[downRoom].x + 1 && goodSpot; x++){
-				for(y = this.rooms[downRoom].y - 1; y <= this.rooms[downRoom].y + 1 && goodSpot; y++){
-					if(this.map[x][y] != '.'){
-						goodSpot = 0;
-					}
-				}
-			}
-			if(goodSpot){
-				// found one!
-				break;
-			}
-		}
-
-		if(goodSpot){
-			this.map[this.rooms[downRoom].x][this.rooms[downRoom].y] = '>';
-		}else{
-			// fuck it then, go for any existing floor cell
-			this.changeRandomCellFrom('.', '>', this.map);
-		}
-
-	}
 	return this.map;
 
+}
+
+mapBuilder.prototype.placeinRandomRoom = function(symbol, targetTexture){
+	if(targetTexture == undefined){
+		targetTexture = '.';
+	}
+	// first see if we can find a middle-of-room that fits
+	offset = Math.floor(Math.random() * this.rooms.length);
+	for(uR = 0; uR < this.rooms.length; uR++){
+		upRoom = (uR + offset) % this.rooms.length;
+		goodSpot = 1;
+		// check to see if it's got a one-block clearance from other objects 
+		for(x = this.rooms[upRoom].x - 1; x <= this.rooms[upRoom].x + 1 && goodSpot; x++){
+			for(y = this.rooms[upRoom].y - 1; y <= this.rooms[upRoom].y + 1 && goodSpot; y++){
+				if(this.map[x][y] != targetTexture){
+					goodSpot = 0;
+				}
+			}
+		}
+		if(goodSpot){
+			// found one!
+			break;
+		}
+	}
+
+	if(goodSpot){
+		this.map[this.rooms[upRoom].x][this.rooms[upRoom].y] = symbol;
+	}else{
+		// fuck it then, go for any existing floor cell
+		this.changeRandomCellFrom('.', symbol, this.map);
+	}
 }
 
 mapBuilder.prototype.linkRooms = function(){
@@ -336,7 +284,7 @@ mapBuilder.prototype.changeRandomCellFrom = function(from, to, map){
 	return rval;
 };
 
-// Render a forst terrain
+// Render a forest terrain
 mapBuilder.prototype.buildForest = function(){
 
 	this.readParams.apply(this, arguments);

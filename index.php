@@ -75,16 +75,17 @@
 			map = new mapBuilder();
 			switch(mapType){
 				case 'dungeon':
+					map.buildDungeon();
+					/*
 
 					map.buildDungeon({
 						'width' : 5 + size, 
 						'height' : 5 + size,
 						'stairdown' : true,
 						'stairup' : true,
-						'roomscale' : .6 /*
-						'gridscale' : 1*/
+						'roomscale' : 1
 					});
-
+					*/
 					break;
 				case 'swamp':
 					map.buildSwamp({
